@@ -4,8 +4,10 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.List;
@@ -15,15 +17,25 @@ import java.util.List;
  * 构造适配器
  */
 
-public class NewsAdapter extends BaseAdapter {
+public class NewsAdapter extends BaseAdapter implements AbsListView.OnScrollListener {
     private List<NewsBean> mList;
     private LayoutInflater mInflater;
-    private ImageLoader imageLoader;
+    private ImageLoader mImageLoader;
+    private int mStart, mEnd;
+    public static String[] URLS;
+    private Boolean mFirstIn;
 
-    public NewsAdapter(Context context, List<NewsBean> data) {
+    public NewsAdapter(Context context, List<NewsBean> data, ListView listView) {
         mList = data;
         mInflater = LayoutInflater.from(context);
-        imageLoader = new ImageLoader();
+        mImageLoader = new ImageLoader(listView);
+        URLS = new String[data.size()];
+        for (int i = 0; i < data.size(); i ++){
+            URLS[i] = data.get(i).newsIconUrl;
+        }
+        mFirstIn = true;
+        //注意为ListView注册滚动监听器
+        listView.setOnScrollListener(this);
     }
 
     /**
@@ -40,7 +52,6 @@ public class NewsAdapter extends BaseAdapter {
      * Get the data item associated with the specified position in the data set.
      *
      * @param position Position of the item whose data we want within the adapter's
-     *                 data set.
      * @return The data at the specified position.
      */
     @Override
@@ -78,11 +89,50 @@ public class NewsAdapter extends BaseAdapter {
         String url = mList.get(position).newsIconUrl;
         viewHolder.ivIcon.setTag(url);
 //        new ImageLoader().showImageByThread(viewHolder.ivIcon, url);
-        imageLoader.showImageByAsyncTask(viewHolder.ivIcon, url);
+        mImageLoader.showImageByAsyncTask(viewHolder.ivIcon, url);
         viewHolder.tvTitle.setText(mList.get(position).newsTitle);
         viewHolder.tvContent.setText(mList.get(position).newsContent);
         return convertView;
     }
+
+    /**
+     * Callback method to be invoked while the list view or grid view is being scrolled. If the
+     * view is being scrolled, this method will be called before the next frame of the scroll is
+     * rendered. In particular, it will be called before any calls to
+     * @param view        The view whose scroll state is being reported
+     * @param scrollState The current scroll state. One of
+     *                    {@link #SCROLL_STATE_TOUCH_SCROLL} or {@link #SCROLL_STATE_IDLE}.
+     */
+    @Override
+    public void onScrollStateChanged(AbsListView view, int scrollState) {
+        if (scrollState == SCROLL_STATE_IDLE) {
+            //加载可见项
+            mImageLoader.loadImages(mStart, mEnd);
+        } else {
+            //停止任务
+            mImageLoader.cancelAllTasks();
+        }
+    }
+
+    /**
+     * Callback method to be invoked when the list or grid has been scrolled. This will be
+     * called after the scroll has completed
+     * @param view             The view whose scroll state is being reported
+     * @param firstVisibleItem the index of the first visible cell (ignore if
+     *                         visibleItemCount == 0)
+     * @param visibleItemCount the number of visible cells
+     * @param totalItemCount   the number of items in the list adaptor
+     */
+    @Override
+    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+        mStart = firstVisibleItem;
+        mEnd = firstVisibleItem + visibleItemCount;
+        if (mFirstIn && visibleItemCount > 0){
+            mImageLoader.loadImages(mStart, mEnd);
+            mFirstIn = false;
+        }
+    }
+
 
     class ViewHolder {
         public TextView tvTitle, tvContent;
