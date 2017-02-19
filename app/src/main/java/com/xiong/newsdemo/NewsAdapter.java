@@ -18,11 +18,12 @@ import java.util.List;
 public class NewsAdapter extends BaseAdapter {
     private List<NewsBean> mList;
     private LayoutInflater mInflater;
-
+    private ImageLoader imageLoader;
 
     public NewsAdapter(Context context, List<NewsBean> data) {
         mList = data;
         mInflater = LayoutInflater.from(context);
+        imageLoader = new ImageLoader();
     }
 
     /**
@@ -59,7 +60,7 @@ public class NewsAdapter extends BaseAdapter {
     }
 
     /**
-     *重写getView方法，并通过构造ViewHolder和利用ConvertView缓存提高性能
+     * 重写getView方法，并通过构造ViewHolder和利用ConvertView缓存提高性能
      */
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
@@ -77,7 +78,7 @@ public class NewsAdapter extends BaseAdapter {
         String url = mList.get(position).newsIconUrl;
         viewHolder.ivIcon.setTag(url);
 //        new ImageLoader().showImageByThread(viewHolder.ivIcon, url);
-        new ImageLoader().showImageByAsyncTask(viewHolder.ivIcon, url);
+        imageLoader.showImageByAsyncTask(viewHolder.ivIcon, url);
         viewHolder.tvTitle.setText(mList.get(position).newsTitle);
         viewHolder.tvContent.setText(mList.get(position).newsContent);
         return convertView;

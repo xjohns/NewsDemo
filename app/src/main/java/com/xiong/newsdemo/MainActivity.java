@@ -3,7 +3,6 @@ package com.xiong.newsdemo;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.ListView;
 
 import org.json.JSONArray;

@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 //import android.os.Handler;
 //import android.os.Message;
+import android.util.LruCache;
 import android.widget.ImageView;
 
 import java.io.BufferedInputStream;
@@ -20,6 +21,38 @@ import java.net.URL;
  */
 
 public class ImageLoader {
+    //创建Cache，通过键值对的形式保存数据
+    private LruCache<String, Bitmap> mCaches;
+
+    public ImageLoader() {
+        //获取最大可用内存
+        int maxMemory = (int) Runtime.getRuntime().maxMemory();
+        int cacheSize = maxMemory / 4;
+        mCaches = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap value) {
+                //在每次存入缓存时调用
+                return value.getByteCount();
+            }
+        };
+    }
+
+    /**
+     * 将Bitmap增加到缓存
+     */
+    public void addBitmapToCache(String url, Bitmap bitmap) {
+        if (getBitmapByCache(url) == null) {
+            mCaches.put(url, bitmap);
+        }
+    }
+
+    /**
+     * 从缓存中获取Bitmap
+     */
+    public Bitmap getBitmapByCache(String url) {
+        return mCaches.get(url);
+    }
+
 //    private ImageView mImageView;
 //    private String mUrl;
 //    /**
@@ -59,7 +92,7 @@ public class ImageLoader {
      * @param urlString url网络地址的字符串
      * @return 解析后的图像
      */
-    public Bitmap showBitmapFromURL (String urlString){
+    public Bitmap showBitmapFromURL(String urlString) {
         Bitmap bitmap;
         InputStream is = null;
         try {
@@ -86,26 +119,42 @@ public class ImageLoader {
     /**
      * AsyncTask异步线程
      */
-    public void showImageByAsyncTask (ImageView imageView, String url){
-        new NewsAsyncTask(imageView, url).execute(url);
+    public void showImageByAsyncTask(ImageView imageView, String url) {
+        //从缓存中取出图片
+        Bitmap bitmap = getBitmapByCache(url);
+        //如果缓存中没有则通过异步线程下载
+        if (bitmap == null) {
+            new NewsAsyncTask(imageView, url).execute(url);
+        } else {
+            imageView.setImageBitmap(bitmap);
+        }
     }
-    private class NewsAsyncTask extends AsyncTask <String, Void, Bitmap>{
+
+    private class NewsAsyncTask extends AsyncTask<String, Void, Bitmap> {
         private String mUrl;
         private ImageView mImageView;
 
-        public NewsAsyncTask (ImageView imageView, String url){
+        public NewsAsyncTask(ImageView imageView, String url) {
             mImageView = imageView;
             mUrl = url;
         }
+
         @Override
         protected Bitmap doInBackground(String... params) {
-            return showBitmapFromURL(params[0]);
+            String url = params[0];
+            //从网络上获取图片
+            Bitmap bitmap = showBitmapFromURL(url);
+            if (bitmap != null){
+                //将图片加入缓存
+                addBitmapToCache(url, bitmap);
+            }
+            return bitmap;
         }
 
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             super.onPostExecute(bitmap);
-            if (mImageView.getTag().equals(mUrl)){
+            if (mImageView.getTag().equals(mUrl)) {
                 mImageView.setImageBitmap(bitmap);
             }
         }
